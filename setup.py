@@ -101,7 +101,7 @@ def _post_install(dir_):
                     # ] characters
                     last_quote = line.rfind("\"")
                     if last_quote > 0 and "ssl_tls" not in line:
-                        print("%s, \"ssl_tls\" ]" % line[
+                        print("%s, \"ssl_tls\" ]\n" % line[
                               :last_quote + 1], end="")
                         processing_layer_list = False
                     else:
