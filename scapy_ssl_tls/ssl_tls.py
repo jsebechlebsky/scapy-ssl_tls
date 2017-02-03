@@ -16,6 +16,8 @@ import ssl_tls_registry as registry
 
 class BLenField(LenField):
 
+    __slots__ = ('name', 'adjust_i2m', 'adjust_m2i', 'numbytes', 'length_of', 'count_of')
+
     def __init__(
             self,
             name,
@@ -93,6 +95,8 @@ class XFieldLenField(FieldLenField):
 
 
 class BEnumField(EnumField):
+
+    __slots__ = ('numbytes', 'name', 'fmt', 'default', 'sz', 'owners')
 
     def __init__(self, name, default, enum, fmt="!I", numbytes=None):
         EnumField.__init__(self, name, default, enum, fmt)
@@ -332,6 +336,9 @@ class TLSFragmentationError(Exception):
 
 
 class TLSRecord(StackedLenPacket):
+
+    __slots__ = ('tls_ctx','fragments')
+
     MAX_LEN = 2**16 - 1
     name = "TLS Record"
     fields_desc = [ByteEnumField("content_type", TLSContentType.APPLICATION_DATA, TLS_CONTENT_TYPES),
@@ -539,6 +546,8 @@ class TLSHeartBeat(PacketNoPayload):
 
 class TLSKeyExchange(Packet):
 
+    __slots__ = ('tls_ctx',)
+
     def __init__(self, *args, **fields):
         try:
             self.tls_ctx = fields["ctx"]
@@ -638,7 +647,7 @@ class TLSServerHelloDone(PacketNoPayload):
 class TLSCertificate(PacketNoPayload):
     name = "TLS Certificate"
     fields_desc = [XBLenField("length", None, length_of="data", fmt="!I", numbytes=3),
-                   PacketLenField("data", None, x509.X509Cert, length_from=lambda x:x.length)]
+                   PacketLenField("data", None, x509.X509_Cert, length_from=lambda x:x.length)]
 
 
 class TLSCertificateList(PacketNoPayload):
@@ -662,7 +671,7 @@ class TLSCertificateType(PacketNoPayload):
 class TLSCADistinguishedName(PacketNoPayload):
     name = "TLS CA Distinguished Name"
     fields_desc = [XFieldLenField("length", None, length_of="dn", fmt="H"),
-                   PacketLenField("ca_dn", None, x509.X509v3Ext, length_from=lambda x:x.length)]
+                   PacketLenField("ca_dn", None, x509.X509_Extension, length_from=lambda x:x.length)]
 
 
 class TLSCertificateRequest(Packet):
@@ -676,6 +685,8 @@ class TLSCertificateRequest(Packet):
 
 
 class TLSDecryptablePacket(PacketLengthFieldPayload):
+
+    __slots__ = ('tls_ctx',)
 
     explicit_iv_field = StrField("explicit_iv", "", fmt="H")
     mac_field = StrField("mac", "", fmt="H")
@@ -996,6 +1007,9 @@ class SSL(Packet):
     """
     COMPOUND CLASS for SSL
     """
+
+    __slots__ = ('tls_ctx', 'guessed_next_layer')
+
     name = "SSL/TLS"
     fields_desc = [PacketListField("records", None, TLSRecord)]
 
@@ -1020,7 +1034,8 @@ class SSL(Packet):
             self.guessed_next_layer = SSLv2Record
         else:
             self.guessed_next_layer = TLSRecord
-        self.fields_desc = [PacketListField("records", None, self.guessed_next_layer)]
+        #self.fields_desc = [PacketListField("records", None, self.guessed_next_layer)]
+        self.fields_desc[0].cls = self.guessed_next_layer
         return raw_bytes
 
     def do_dissect(self, raw_bytes):
